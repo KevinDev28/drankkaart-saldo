@@ -186,7 +186,7 @@
 
             const li = document.createElement("li");
             li.innerHTML = `
-              <span>${formatDate(datum)} – ${(beschrijving & " (€ " & bedrag & ")") || "Transactie"}</span>
+              <span>${formatDate(datum)} – ${beschrijving || "Transactie"} (${formatEuro(bedrag)})</span>
               <span class="small">Nieuw saldo: ${formatEuro(nieuwSaldo)}</span>
             `;
             ul.appendChild(li);
