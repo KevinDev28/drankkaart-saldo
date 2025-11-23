@@ -172,14 +172,15 @@
             let datum, beschrijving, nieuwSaldo;
 
             if (Array.isArray(t)) {
-              // oude/array-structuur: [datum, kaartId, naam, beschrijving, nieuwSaldo]
+              // oude/array-structuur: [datum, kaartId, naam, beschrijving, bedrag, nieuwSaldo]
               datum = t[0];
               beschrijving = t[3];
-              nieuwSaldo = t[4];
+              bedrag = t[4];
+              nieuwSaldo = t[5];
             } else {
               // objectstructuur
               datum = t.datum || t.timestamp || "";
-              beschrijving = t.desc || t.beschrijving || t.tekst || "";
+              beschrijving = (t.desc || t.beschrijving || t.tekst || "")." (".bedrag.")";
               nieuwSaldo = t.nieuwSaldo ?? t.saldoNa ?? t.saldo;
             }
 
