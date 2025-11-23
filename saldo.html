@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <title>Mijn Drankkaart Saldo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      font-family: "Segoe UI", sans-serif;
+      background: linear-gradient(135deg, #74b9ff, #a29bfe);
+      color: #2c3e50;
+      text-align: center;
+      padding: 2em;
+      margin: 0;
+    }
+    .card {
+      background: #fff;
+      border-radius: 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      padding: 25px;
+      max-width: 400px;
+      margin: 2em auto;
+      transition: 0.3s;
+    }
+    .card:hover { transform: translateY(-2px); }
+    h1 { color: #2c3e50; margin-bottom: 0.2em; }
+    h2 { margin-top: 0; color: #0984e3; }
+    .saldo {
+      font-size: 2em;
+      font-weight: bold;
+      color: #27ae60;
+      margin: 0.4em 0;
+    }
+    .loader {
+      border: 6px solid #f3f3f3;
+      border-top: 6px solid #3498db;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 40px auto;
+    }
+    @keyframes spin { 100% { transform: rotate(360deg); } }
+
+    h3 {
+      margin-top: 1.5em;
+      margin-bottom: 0.5em;
+      font-size: 16px;
+    }
+
+    ul {
+      text-align: left;
+      list-style: none;
+      padding: 0;
+      margin-top: 10px;
+    }
+    li {
+      background: #f4f6f8;
+      margin: 5px 0;
+      padding: 10px;
+      border-radius: 10px;
+      font-size: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    li span.small {
+      font-size: 12px;
+      color: #666;
+    }
+    .error {
+      color: red;
+      margin-top: 1em;
+    }
+    footer {
+      margin-top: 30px;
+      font-size: 12px;
+      color: #555;
+    }
+  </style>
+</head>
+<body>
+  <div class="card" id="content">
+    <h1>Mijn Drankkaart</h1>
+    <div id="loader" class="loader"></div>
+    <div id="data" style="display:none;">
+      <h2 id="naam"></h2>
+      <p class="saldo" id="saldo"></p>
+      <h3>Laatste transacties</h3>
+      <ul id="transacties"></ul>
+    </div>
+    <p id="error" class="error"></p>
+  </div>
+
+  <footer>
+    © <span id="jaar"></span> Drankkaart Systeem Coach Kevin
+  </footer>
+
+  <script>
+    const apiUrl = "https://script.google.com/macros/s/AKfycbxPqRcXaD8i3aGrhwMBgiHUB9nvX7hXF5EIgAENVA3swSHg5YURMKSo6hyfZkAFmugW/exec";
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get("id");
+    const token = params.get("token");
+
+    document.getElementById("jaar").innerText = new Date().getFullYear();
+
+    function formatEuro(value) {
+      const num = typeof value === "number" ? value : parseFloat(value || "0");
+      return "€" + num.toFixed(2).replace(".", ",");
+    }
+
+    function formatDate(datumString) {
+      const d = new Date(datumString);
+      if (isNaN(d.getTime())) return datumString || "";
+      return d.toLocaleString("nl-BE", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+    }
+
+    async function loadSaldo() {
+      const loader = document.getElementById("loader");
+      const dataDiv = document.getElementById("data");
+      const errorDiv = document.getElementById("error");
+      const naamEl = document.getElementById("naam");
+      const saldoEl = document.getElementById("saldo");
+      const ul = document.getElementById("transacties");
+
+      try {
+        if (!id || !token) {
+          errorDiv.innerText = "Ongeldige link. Neem contact op met je coach.";
+          loader.style.display = "none";
+          return;
+        }
+
+        const res = await fetch(`${apiUrl}?action=getSaldo&id=${encodeURIComponent(id)}&token=${encodeURIComponent(token)}`);
+        const text = await res.text();
+
+        let data;
+        try {
+          data = JSON.parse(text);
+        } catch (e) {
+          console.error("Onverwacht antwoord:", text);
+          errorDiv.innerText = "Er is iets misgegaan bij het ophalen van de gegevens.";
+          loader.style.display = "none";
+          return;
+        }
+
+        if (data.error || data.found === false || !data.naam) {
+          errorDiv.innerText = "Kaart niet gevonden of ongeldig token.";
+          loader.style.display = "none";
+          return;
+        }
+
+        // Naam en saldo tonen
+        naamEl.innerText = data.naam;
+        saldoEl.innerText = formatEuro(data.saldo);
+
+        loader.style.display = "none";
+        dataDiv.style.display = "block";
+        errorDiv.innerText = "";
+
+        // Transacties
+        ul.innerHTML = "";
+
+        if (data.transacties && data.transacties.length > 0) {
+          data.transacties.forEach(t => {
+            // t kan object of array zijn afhankelijk van je Apps Script
+            let datum, beschrijving, nieuwSaldo;
+
+            if (Array.isArray(t)) {
+              // oude/array-structuur: [datum, kaartId, naam, beschrijving, nieuwSaldo]
+              datum = t[0];
+              beschrijving = t[3];
+              nieuwSaldo = t[4];
+            } else {
+              // objectstructuur
+              datum = t.datum || t.timestamp || "";
+              beschrijving = t.desc || t.beschrijving || t.tekst || "";
+              nieuwSaldo = t.nieuwSaldo ?? t.saldoNa ?? t.saldo;
+            }
+
+            const li = document.createElement("li");
+            li.innerHTML = `
+              <span>${formatDate(datum)} – ${beschrijving || "Transactie"}</span>
+              <span class="small">Nieuw saldo: ${formatEuro(nieuwSaldo)}</span>
+            `;
+            ul.appendChild(li);
+          });
+        } else {
+          ul.innerHTML = "<li>Geen transacties gevonden.</li>";
+        }
+      } catch (e) {
+        console.error(e);
+        errorDiv.innerText = "Er is iets misgegaan bij het ophalen van de gegevens.";
+        loader.style.display = "none";
+      }
+    }
+
+    loadSaldo();
+  </script>
+</body>
+</html>
