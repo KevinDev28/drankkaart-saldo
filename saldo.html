@@ -180,13 +180,13 @@
             } else {
               // objectstructuur
               datum = t.datum || t.timestamp || "";
-              beschrijving = (t.desc || t.beschrijving || t.tekst || "")." (".bedrag.")";
+              beschrijving = t.desc || t.beschrijving || t.tekst || "";
               nieuwSaldo = t.nieuwSaldo ?? t.saldoNa ?? t.saldo;
             }
 
             const li = document.createElement("li");
             li.innerHTML = `
-              <span>${formatDate(datum)} – ${beschrijving || "Transactie"}</span>
+              <span>${formatDate(datum)} – ${(beschrijving & " (€ " & bedrag & ")") || "Transactie"}</span>
               <span class="small">Nieuw saldo: ${formatEuro(nieuwSaldo)}</span>
             `;
             ul.appendChild(li);
